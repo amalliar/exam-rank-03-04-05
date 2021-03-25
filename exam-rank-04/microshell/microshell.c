@@ -6,7 +6,7 @@
 /*   By: amalliar <marvin@42.fr>                    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/03/23 08:34:50 by amalliar          #+#    #+#             */
-/*   Updated: 2021/03/23 09:28:47 by amalliar         ###   ########.fr       */
+/*   Updated: 2021/03/25 14:10:54 by amalliar         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,6 +14,7 @@
 #include <unistd.h>
 #include <sys/wait.h>
 #include <string.h>
+#include <stddef.h>
 
 
 typedef	struct		s_list
@@ -43,19 +44,6 @@ int					ft_strlen(const char *str)
 	return (str - beg);
 }
 
-char				*ft_strdup(const char *str)
-{
-	char		*copy;
-	int			len;
-
-	len = ft_strlen(str);
-	if (!(copy = malloc(len + 1)))
-		return (NULL);
-	for (int i = 0; i <= len; ++i)
-		copy[i] = str[i];
-	return (copy);
-}
-
 void				ft_putstr_fd(int fd, const char *str)
 {
 	write(fd, str, ft_strlen(str));
@@ -65,6 +53,19 @@ void				exit_fatal(void)
 {
 	ft_putstr_fd(STDERR_FILENO, "error: fatal\n");
 	exit(EXIT_FAILURE);
+}
+
+char				*ft_strdup(const char *str)
+{
+	char		*copy;
+	int			len;
+
+	len = ft_strlen(str);
+	if (!(copy = malloc(len + 1)))
+		exit_fatal();
+	for (int i = 0; i <= len; ++i)
+		copy[i] = str[i];
+	return (copy);
 }
 
 t_list				*lst_new(void)
@@ -129,8 +130,7 @@ void				add_arg(t_list *cmd, const char *arg)
 		exit_fatal();
 	for (int i = 0; i < cmd->argc; ++i)
 		new_argv[i] = cmd->argv[i];
-	if (!(new_argv[cmd->argc] = ft_strdup(arg)))
-		exit_fatal();
+	new_argv[cmd->argc] = ft_strdup(arg);
 	new_argv[cmd->argc + 1] = NULL;
 	free(cmd->argv);
 	cmd->argv = new_argv;
@@ -148,8 +148,11 @@ t_list				*parser_build(int argc, char **argv)
 	{
 		if (!strcmp(argv[idx], ";"))
 		{
-			++idx;
-			return (cmd_list);
+			if (cmd_list)
+			{
+				++idx;
+				return (cmd_list);
+			}
 		}
 		else if (!strcmp(argv[idx], "|"))
 		{
@@ -157,19 +160,14 @@ t_list				*parser_build(int argc, char **argv)
 				exit_fatal();
 			temp = lst_get_last(cmd_list);
 			temp->write_pipe = 1;
-			if (!(temp = lst_new()))
-				exit_fatal();
+			temp = lst_new();
 			temp->read_pipe = 1;
 			lst_push_back(&cmd_list, temp);
 		}
 		else
 		{
 			if (!cmd_list)
-			{
-				if (!(temp = lst_new()))
-					exit_fatal();
-				lst_push_back(&cmd_list, temp);
-			}
+				cmd_list = lst_new();
 			add_arg(lst_get_last(cmd_list), argv[idx]);
 		}
 		++idx;
@@ -200,11 +198,8 @@ int					exec_cmd(t_list *cmd, char **envp)
 	int			stat_loc;
 	pid_t		pid;
 
-	if (cmd->write_pipe)
-	{
-		if (pipe(cmd->pipe))
-			exit_fatal();
-	}
+	if (cmd->write_pipe && pipe(cmd->pipe) < 0)
+		exit_fatal();
 	if ((pid = fork()) < 0)
 		exit_fatal();
 	if (pid == 0)		// Child process.
@@ -224,9 +219,9 @@ int					exec_cmd(t_list *cmd, char **envp)
 	else				// Parent process.
 	{
 		waitpid(pid, &stat_loc, 0);
-		if (cmd->write_pipe && close(cmd->pipe[FD_WRITE]))
+		if (cmd->write_pipe && close(cmd->pipe[FD_WRITE]) < 0)
 			exit_fatal();
-		else if (cmd->read_pipe && close(cmd->prev->pipe[FD_READ]))
+		else if (cmd->read_pipe && close(cmd->prev->pipe[FD_READ]) < 0)
 			exit_fatal();
 		if (WIFEXITED(stat_loc))
 			return (WEXITSTATUS(stat_loc));
