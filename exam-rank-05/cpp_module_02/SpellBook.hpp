@@ -6,18 +6,18 @@
 /*   By: amalliar <marvin@42.fr>                    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/20 04:58:44 by amalliar          #+#    #+#             */
-/*   Updated: 2021/04/22 21:30:10 by amalliar         ###   ########.fr       */
+/*   Updated: 2021/04/24 11:35:07 by amalliar         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #ifndef SPELL_BOOK_HPP
 # define SPELL_BOOK_HPP
 
-#include <string>
-#include <map>
-#include <utility>
-#include <cstddef>
-#include "ASpell.hpp"
+# include <string>
+# include <map>
+# include <utility>
+# include <cstddef>
+# include "ASpell.hpp"
 
 class									ASpell;
 
